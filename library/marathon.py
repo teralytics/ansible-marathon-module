@@ -176,15 +176,16 @@ class MarathonAppManager(object):
             # The application didn't exist before, no need to update it
             return ret, changed
         # Compare the running version of the application with the submitted json
-        app_object_json = json.loads(self._get_app_info().to_json())
+        app_json = self._get_app_info().to_json()
+        app_object_json = json.loads(app_json)
         app_config_object_json = json.loads(MarathonAppManager._get_marathon_app_from_json(json_definition).to_json())
         if self._compare_json_deployments(app_object_json, app_config_object_json):
             # No need to update
-            return self._get_app_info().to_json(), False
+            return app_json, False
         else:
             app = MarathonAppManager._get_marathon_app_from_json(json_definition)
             self._marathon_client.update_app(self._appid, app)
-            return self._get_app_info().to_json(), True
+            return app_json, True
 
 def main():
     module = AnsibleModule(

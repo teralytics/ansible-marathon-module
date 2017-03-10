@@ -107,7 +107,7 @@ class MarathonAppManager(object):
             return None
         return app_info
 
-    def _sync_app_status(self, status, attempts=60, wait_seconds=1):
+    def _sync_app_status(self, status, attempts=60, wait_seconds=3):
         '''
         Waits until the application is in the desired state (for a max number
         of attempts)

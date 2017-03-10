@@ -180,11 +180,11 @@ class MarathonAppManager(object):
         app_config_object_json = json.loads(MarathonAppManager._get_marathon_app_from_json(json_definition).to_json())
         if self._compare_json_deployments(app_object_json, app_config_object_json):
             # No need to update
-            return app_object_json, False
+            return self._get_app_info().to_json(), False
         else:
             app = MarathonAppManager._get_marathon_app_from_json(json_definition)
-            ret = self._marathon_client.update_app(self._appid, app)
-            return ret, True
+            self._marathon_client.update_app(self._appid, app)
+            return self._get_app_info().to_json(), True
 
 def main():
     module = AnsibleModule(

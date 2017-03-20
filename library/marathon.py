@@ -164,7 +164,7 @@ class MarathonAppManager(object):
     def destroy_app(self):
         app_info = self._get_app_info()
         if app_info is None:
-            return "Application {} on {} is not running".format(self._appid, self._marathon_uri), False
+            return json.dumps(None), False
         app_info = self._marathon_client.delete_app(self._appid)
         self._sync_app_status(AppStatuses.APP_NOT_PRESENT)
         return app_info, True
@@ -221,7 +221,7 @@ def main():
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
 
-    ret = ret.replace("{{", "{{ '{{' }}").replace("{%", "{{ '{%' }}")
+    ret = json.loads(ret)
     module.exit_json(changed=changed, meta=ret)
 
 from ansible.module_utils.basic import *

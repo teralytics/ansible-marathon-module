@@ -221,6 +221,7 @@ def main():
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
 
+    ret = ret.replace("{{", "{{ '{{' }}").replace("{%", "{{ '{%' }}")
     module.exit_json(changed=changed, meta=ret)
 
 from ansible.module_utils.basic import *

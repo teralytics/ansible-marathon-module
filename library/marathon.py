@@ -19,8 +19,8 @@ options:
   state:
     required: true
     description:
-      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration
-      choices: ["present", "absent", "updated"]
+      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - diff: outputs the diff between the submitted application and the one that is running (if any)
+      choices: ["present", "absent", "updated", "diff"]
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
@@ -31,11 +31,12 @@ EXAMPLES = '''
   marathon: uri=http://marathon-node:8080 app_json='nginx.json' state=present
 
 # Destroys the application
-- name: Create an application
+- name: Destroy an application
   marathon: uri=http://marathon-node:8080 app_json='nginx.json' state=absent
 '''
 
 import json
+import deepdiff
 try:
     import marathon
     HAS_MARATHON = True
@@ -187,12 +188,21 @@ class MarathonAppManager(object):
             self._marathon_client.update_app(self._appid, app)
             return app_json, True
 
+    def diff_app(self, json_definition):
+        deployed_app = self._get_app_info()
+        deployed_app_json_obj = json.loads('{}')
+        if deployed_app:
+            deployed_app_json_obj = json.loads(deployed_app.to_json())
+        json_definition_obj = json.loads(json_definition)
+        diff = deepdiff.DeepDiff(deployed_app_json_obj, json_definition_obj, ignore_order=True)
+        return diff.json, False
+
 def main():
     module = AnsibleModule(
         argument_spec=dict(
             uri=dict(required=True),
             app_json=dict(required=True),
-            state=dict(required=True, choices=['present', 'absent', 'updated']),
+            state=dict(required=True, choices=['present', 'absent', 'updated', 'diff']),
         ),
     )
 
@@ -218,6 +228,8 @@ def main():
         ret, changed = mam.destroy_app()
     elif state == 'updated':
         ret, changed = mam.update_app(app_json)
+    elif state == 'diff':
+        ret, changed = mam.diff_app(app_json)
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
 

@@ -22,6 +22,11 @@ options:
       - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - diff: outputs the diff between the submitted application and the one that is running (if any)
       choices: ["present", "absent", "updated", "diff"]
 
+  diffstyle:
+    required" false
+    description:
+      - For the diff state, determines if the diff has to report the whole content ('full') or just the changed lines ('compact')
+
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
 
@@ -36,7 +41,7 @@ EXAMPLES = '''
 '''
 
 import json
-import deepdiff
+import difflib
 try:
     import marathon
     HAS_MARATHON = True
@@ -188,14 +193,24 @@ class MarathonAppManager(object):
             self._marathon_client.update_app(self._appid, app)
             return app_json, True
 
-    def diff_app(self, json_definition):
+    def diff_app(self, json_definition, compact_diff=False):
         deployed_app = self._get_app_info()
-        deployed_app_json_obj = json.loads('{}')
         if deployed_app:
             deployed_app_json_obj = json.loads(deployed_app.to_json())
+        else:
+            deployed_app_json_obj = json.loads('{}')
         json_definition_obj = json.loads(json_definition)
-        diff = deepdiff.DeepDiff(deployed_app_json_obj, json_definition_obj, ignore_order=True)
-        return diff.json, False
+        string_old = json.dumps(deployed_app_json_obj, sort_keys=True, indent=4, separators=('', ': '))
+        string_new = json.dumps(json_definition_obj, sort_keys=True, indent=4, separators=('', ': '))
+        diff = ('\n '.join((difflib.unified_diff(string_old.split('\n'), string_new.split('\n'))))).split('\n')
+        if compact_diff:
+            # Collecting just the lines indicating a difference
+            result = []
+            for line in diff:
+                if line.strip().startswith('-') or line.strip().startswith('+'):
+                    result.append(line)
+            diff = result
+        return diff, "diff"
 
 def main():
     module = AnsibleModule(
@@ -203,6 +218,7 @@ def main():
             uri=dict(required=True),
             app_json=dict(required=True),
             state=dict(required=True, choices=['present', 'absent', 'updated', 'diff']),
+            diffstyle=dict(choices=['full', 'compact'], default='full')
         ),
     )
 
@@ -212,6 +228,7 @@ def main():
     marathon_uri = module.params['uri'].rstrip('/')
     json_filename = module.params['app_json']
     state = module.params['state']
+    diffstyle = module.params['diffstyle']
 
     app_json = ''
     with open(json_filename) as jf:
@@ -229,11 +246,15 @@ def main():
     elif state == 'updated':
         ret, changed = mam.update_app(app_json)
     elif state == 'diff':
-        ret, changed = mam.diff_app(app_json)
+        ret, changed = mam.diff_app(app_json, diffstyle == "compact")
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
 
-    ret = json.loads(ret)
+    # Diff cannot return a valid json string
+    if changed == "diff":
+        changed = False
+    else:
+        ret = json.loads(ret)
     module.exit_json(changed=changed, meta=ret)
 
 from ansible.module_utils.basic import *

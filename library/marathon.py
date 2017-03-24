@@ -23,7 +23,7 @@ options:
       choices: ["present", "absent", "updated", "diff"]
 
   diffstyle:
-    required" false
+    required: false
     description:
       - For the diff state, determines if the diff has to report the whole content ('full') or just the changed lines ('compact')
 

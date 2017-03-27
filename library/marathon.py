@@ -165,7 +165,7 @@ class MarathonAppManager(object):
             ret, changed = self.create_app(json_definition)
             module.exit_json(changed=changed, meta=json.loads(ret))
         else:
-            module.exit_json(changed=changed, meta=json.loads(app_info.to_json()))
+            module.exit_json(changed=False, meta=json.loads(app_info.to_json()))
 
     def destroy_app(self):
         app_info = self._get_app_info()

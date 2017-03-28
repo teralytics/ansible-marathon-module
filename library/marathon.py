@@ -19,13 +19,13 @@ options:
   state:
     required: true
     description:
-      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - diff: outputs the diff between the submitted application and the one that is running (if any)
-      choices: ["present", "absent", "updated", "diff"]
+      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - test: outputs the diff between the submitted application and the one that is running (if any)
+      choices: ["present", "absent", "updated", "test"]
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
 
-# Note: the diff logic is not integrated with the tasks that (re-)deploy the application
+# Note: the diff logic (of the test state) is not integrated with the tasks that (re-)deploy the application
 # because it's difficult to determine if something changed because marathon added default
 # fields to the application or if the deployment file actually differed.
 # For example, marathon always adds the "privileged": false node under the docker node.
@@ -231,7 +231,7 @@ def main():
         ret, changed = mam.destroy_app()
     elif state == 'updated':
         ret, changed = mam.update_app(app_json)
-    elif state == 'diff':
+    elif state == 'test':
         ret, changed = mam.diff_app(app_json)
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
@@ -243,7 +243,7 @@ module = AnsibleModule(
     argument_spec=dict(
         uri=dict(required=True),
         app_json=dict(required=True),
-        state=dict(required=True, choices=['present', 'absent', 'updated', 'diff'])
+        state=dict(required=True, choices=['present', 'absent', 'updated', 'test'])
     ),
 )
 

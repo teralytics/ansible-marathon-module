@@ -176,13 +176,13 @@ class MarathonAppManager(object):
         module.exit_json(changed=True, meta=json.loads(app_info))
 
     def update_app(self, json_definition):
-        ret, changed = self.create_if_not_exists(json_definition)
-        self._fail_if_not_running()
-        if changed:
-            # The application didn't exist before, no need to update it
+        app_info = self._get_app_info()
+        if app_info is None:
+            ret, changed = self.create_app(json_definition)
             module.exit_json(changed=changed, meta=json.loads(ret))
+        self._fail_if_not_running()
         # Compare the running version of the application with the submitted json
-        app_json = self._get_app_info().to_json()
+        app_json = app_info.to_json()
         app_object_json = json.loads(app_json)
         app_config_object_json = json.loads(MarathonAppManager._get_marathon_app_from_json(json_definition).to_json())
         if self._compare_json_deployments(app_object_json, app_config_object_json):

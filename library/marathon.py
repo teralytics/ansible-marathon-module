@@ -152,6 +152,14 @@ class MarathonAppManager(object):
         # Items are the sames
         return True
 
+    # _app_id is in the object
+    def get_app(self):
+        app_info = self._get_app_info()
+        if app_info is None:
+            module.fail_json(msg="Application with id {} could not be found on {}".format(self._appid, self._marathon_uri))
+        else:
+            module.exit_json(changed=False, meta=json.loads(app_info.to_json()))
+
     def create_app(self, json_definition):
         self._fail_if_running()
         app = MarathonAppManager._get_marathon_app_from_json(json_definition)
@@ -213,14 +221,22 @@ def main():
         module.fail_json(msg='marathon python module required for this module')
 
     marathon_uri = module.params['uri'].rstrip('/')
-    json_filename = module.params['app_json']
     state = module.params['state']
-
+    json_filename = module.params['app_json']
     app_json = ''
-    with open(json_filename) as jf:
-        app_json = jf.read()
-    appid = json.loads(app_json)['id']
-    mam = MarathonAppManager(marathon_uri, appid)
+    app_id = ''
+
+    # new: support setting only the 'app_id'
+    if json_filename is None:
+        app_id = module.params['app_id']
+        if app_id is None:
+            module.fail_json(msg="One of 'app_json','app_id' params is required")
+    else:
+        with open(json_filename) as jf:
+            app_json = jf.read()
+        app_id = json.loads(app_json)['id']
+
+    mam = MarathonAppManager(marathon_uri, app_id)
 
     ret = ''
     changed = False
@@ -233,6 +249,8 @@ def main():
         ret, changed = mam.update_app(app_json)
     elif state == 'test':
         ret, changed = mam.diff_app(app_json)
+    elif state == 'get':
+        ret, changed = mam.get_app()
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
 

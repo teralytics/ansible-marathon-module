@@ -227,9 +227,9 @@ def main():
     app_id = ''
 
     # new: support setting only the 'app_id'
-    if json_filename is None:
+    if not json_filename:
         app_id = module.params['app_id']
-        if app_id is None:
+        if not app_id:
             module.fail_json(msg="One of 'app_json','app_id' params is required")
     else:
         with open(json_filename) as jf:
@@ -261,7 +261,8 @@ module = AnsibleModule(
     argument_spec=dict(
         uri=dict(required=True),
         app_json=dict(required=True),
-        state=dict(required=True, choices=['present', 'absent', 'updated', 'test'])
+        app_id=dict(required=False),
+        state=dict(required=True, choices=['present', 'absent', 'updated', 'test','get'])
     ),
 )
 

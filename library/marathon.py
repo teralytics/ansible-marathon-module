@@ -12,15 +12,19 @@ options:
     required: true
     description:
       - URI of a Marathon node
-  app_json:
-    required: true
-    description:
-      - The json file describing the marathon application
   state:
     required: true
     description:
-      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - test: outputs the diff between the submitted application and the one that is running (if any)
-      choices: ["present", "absent", "updated", "test"]
+      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - test: outputs the diff between the submitted application and the one that is running (if any) - get: outputs the running application
+      choices: ["present", "absent", "updated", "test", "get"]
+  app_json:
+    required: true
+    description:
+      - The json file describing the marathon application. It is required for all the state choices, except 'get' (where an empty string is OK)
+  app_id:
+    required: false
+    description:
+      - The id of the marathon application to 'get' (currently only used with state 'get')
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
@@ -38,6 +42,11 @@ EXAMPLES = '''
 # Destroys the application
 - name: Destroy an application
   marathon: uri=http://marathon-node:8080 app_json='nginx.json' state=absent
+
+# Get an application's state info (or fails if no app found for the given id)
+- name: Get application infos
+  marathon: uri=http://marathon-node:8080 state=get app_id='nginx' app_json=''
+
 '''
 
 import json

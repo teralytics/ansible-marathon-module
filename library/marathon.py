@@ -12,15 +12,19 @@ options:
     required: true
     description:
       - URI of a Marathon node
-  app_json:
-    required: true
-    description:
-      - The json file describing the marathon application
   state:
     required: true
     description:
-      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - test: outputs the diff between the submitted application and the one that is running (if any)
-      choices: ["present", "absent", "updated", "test"]
+      - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - test: outputs the diff between the submitted application and the one that is running (if any) - get: outputs the running application
+      choices: ["present", "absent", "updated", "test", "get"]
+  app_json:
+    required: true
+    description:
+      - The json file describing the marathon application. It is required for all the state choices, except 'get' (where an empty string is OK)
+  app_id:
+    required: false
+    description:
+      - The id of the marathon application to 'get' (currently only used with state 'get')
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
@@ -38,6 +42,11 @@ EXAMPLES = '''
 # Destroys the application
 - name: Destroy an application
   marathon: uri=http://marathon-node:8080 app_json='nginx.json' state=absent
+
+# Get an application's state info (or fails if no app found for the given id)
+- name: Get application infos
+  marathon: uri=http://marathon-node:8080 state=get app_id='nginx' app_json=''
+
 '''
 
 import json
@@ -152,6 +161,14 @@ class MarathonAppManager(object):
         # Items are the sames
         return True
 
+    # _app_id is in the object
+    def get_app(self):
+        app_info = self._get_app_info()
+        if app_info is None:
+            module.fail_json(msg="Application with id {} could not be found on {}".format(self._appid, self._marathon_uri))
+        else:
+            module.exit_json(changed=False, meta=json.loads(app_info.to_json()))
+
     def create_app(self, json_definition):
         self._fail_if_running()
         app = MarathonAppManager._get_marathon_app_from_json(json_definition)
@@ -213,14 +230,22 @@ def main():
         module.fail_json(msg='marathon python module required for this module')
 
     marathon_uri = module.params['uri'].rstrip('/')
-    json_filename = module.params['app_json']
     state = module.params['state']
-
+    json_filename = module.params['app_json']
     app_json = ''
-    with open(json_filename) as jf:
-        app_json = jf.read()
-    appid = json.loads(app_json)['id']
-    mam = MarathonAppManager(marathon_uri, appid)
+    app_id = ''
+
+    # new: support setting only the 'app_id'
+    if not json_filename:
+        app_id = module.params['app_id']
+        if not app_id:
+            module.fail_json(msg="One of 'app_json','app_id' params is required")
+    else:
+        with open(json_filename) as jf:
+            app_json = jf.read()
+        app_id = json.loads(app_json)['id']
+
+    mam = MarathonAppManager(marathon_uri, app_id)
 
     ret = ''
     changed = False
@@ -233,6 +258,8 @@ def main():
         ret, changed = mam.update_app(app_json)
     elif state == 'test':
         ret, changed = mam.diff_app(app_json)
+    elif state == 'get':
+        ret, changed = mam.get_app()
     else:
         module.fail_json(msg="Unknown state: {}".format(state))
 
@@ -243,7 +270,8 @@ module = AnsibleModule(
     argument_spec=dict(
         uri=dict(required=True),
         app_json=dict(required=True),
-        state=dict(required=True, choices=['present', 'absent', 'updated', 'test'])
+        app_id=dict(required=False),
+        state=dict(required=True, choices=['present', 'absent', 'updated', 'test','get'])
     ),
 )
 

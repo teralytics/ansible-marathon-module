@@ -238,8 +238,6 @@ def main():
 
     if module.params['app_json']:
         json_filename = module.params['app_json']
-        if not json_filename:
-            raise KeyError, "app_json"
         app_json = ''
         with open(json_filename) as jf:
             app_json = jf.read()

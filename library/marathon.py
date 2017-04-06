@@ -18,13 +18,17 @@ options:
       - Desired state of the marathon application: - present: application is created if it doesn't exist, but it is not updated if the json changed - absent: application is destroyed - updated: application is updated if the json has differences with the existing configuration - test: outputs the diff between the submitted application and the one that is running (if any) - get: outputs the running application
       choices: ["present", "absent", "updated", "test", "get"]
   app_json:
-    required: true
+    required: false
     description:
-      - The json file describing the marathon application. It is required for all the state choices, except 'get' (where an empty string is OK)
+      - The JSON file describing the marathon application.  Either this or app is required for all the state choices, except 'get' and 'absent' (where not supplying it is OK).
   app_id:
     required: false
     description:
-      - The id of the marathon application to 'get' (currently only used with state 'get')
+      - The id of the marathon application to 'get'.  Used when state is 'get' or 'absent'.
+  app:
+    required: false
+    description:
+      - The JSON content, as a string containing valid JSON, describing the marathon application.  Either this or app_json is required for all the state choices, except 'get' and 'absent' (where not supplying it is OK).
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
@@ -231,21 +235,26 @@ def main():
 
     marathon_uri = module.params['uri'].rstrip('/')
     state = module.params['state']
-    json_filename = module.params['app_json']
-    app_json = ''
-    app_id = ''
 
-    # new: support setting only the 'app_id'
-    if not json_filename:
-        app_id = module.params['app_id']
-        if not app_id:
-            module.fail_json(msg="One of 'app_json','app_id' params is required")
-    else:
+    if module.params['app_json']:
+        json_filename = module.params['app_json']
+        if not json_filename:
+            raise KeyError, "app_json"
+        app_json = ''
         with open(json_filename) as jf:
             app_json = jf.read()
-        app_id = json.loads(app_json)['id']
+        appid = json.loads(app_json)['id']
+    elif module.params['app']:
+        app_json = module.params['app']
+        appid = json.loads(app_json)['id']
+    elif module.params['app_id']:
+        if state not in ["get", "absent"]:
+            module.fail_json(msg="supplying app_id only works when state is 'get' or 'absent'.")
+        appid = module.params['app_id']
+    else:
+        module.fail_json(msg="this module requires one of the app_json, app_id or app parameters.")
 
-    mam = MarathonAppManager(marathon_uri, app_id)
+    mam = MarathonAppManager(marathon_uri, appid)
 
     ret = ''
     changed = False
@@ -269,7 +278,8 @@ from ansible.module_utils.urls import *
 module = AnsibleModule(
     argument_spec=dict(
         uri=dict(required=True),
-        app_json=dict(required=True),
+        app_json=dict(required=False),
+        app=dict(required=False),
         app_id=dict(required=False),
         state=dict(required=True, choices=['present', 'absent', 'updated', 'test','get'])
     ),

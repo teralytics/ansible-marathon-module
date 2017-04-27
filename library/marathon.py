@@ -56,6 +56,7 @@ EXAMPLES = '''
 import json
 try:
     import marathon
+    import marathon.exceptions
     HAS_MARATHON = True
 except ImportError:
     HAS_MARATHON = False
@@ -176,7 +177,10 @@ class MarathonAppManager(object):
     def create_app(self, json_definition):
         self._fail_if_running()
         app = MarathonAppManager._get_marathon_app_from_json(json_definition)
-        self._marathon_client.create_app(self._appid, app)
+        try:
+            self._marathon_client.create_app(self._appid, app)
+        except marathon.exceptions.MarathonHttpError as e:
+            module.fail_json(msg=e.error_message, details=e.error_details)
         self._sync_app_status(AppStatuses.APP_DEPLOYED)
         return self._get_app_info().to_json(), True
 
@@ -211,7 +215,10 @@ class MarathonAppManager(object):
             module.exit_json(changed=False, meta=json.loads(app_json))
         else:
             app = MarathonAppManager._get_marathon_app_from_json(json_definition)
-            self._marathon_client.update_app(self._appid, app)
+            try:
+                self._marathon_client.update_app(self._appid, app)
+            except marathon.exceptions.MarathonHttpError as e:
+                module.fail_json(msg=e.error_message, details=e.error_details)
             module.exit_json(changed=True, meta=json.loads(app_json))
 
     def diff_app(self, json_definition):

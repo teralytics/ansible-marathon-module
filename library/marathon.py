@@ -29,6 +29,10 @@ options:
     required: false
     description:
       - The JSON content, as a string containing valid JSON, describing the marathon application.  Either this or app_json is required for all the state choices, except 'get' and 'absent' (where not supplying it is OK).
+  force:
+    required: false
+    description:
+      - If true, forces the application even if the deployment is locked due to prior changes.
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''
@@ -192,13 +196,15 @@ class MarathonAppManager(object):
         else:
             module.exit_json(changed=False, meta=json.loads(app_info.to_json()))
 
-    def destroy_app(self):
+    def destroy_app(self, force=False):
         app_info = self._get_app_info()
         if app_info is None:
             module.exit_json(changed=False, meta=json.dumps(None))
-        app_info = self._marathon_client.delete_app(self._appid)
+        app_info = self._marathon_client.delete_app(self._appid, force=force)
         self._sync_app_status(AppStatuses.APP_NOT_PRESENT)
-        module.exit_json(changed=True, meta=json.loads(app_info))
+        if isinstance(app_info, basestring):
+            module.exit_json(changed=True, meta=json.loads(app_info))
+        module.exit_json(changed=True, **app_info)
 
     def update_app(self, json_definition):
         app_info = self._get_app_info()
@@ -243,6 +249,10 @@ def main():
     marathon_uri = module.params['uri'].rstrip('/')
     state = module.params['state']
 
+    force = module.params['force']
+    if force and state not in ['absent']:
+        module.fail_json(msg="supplying force=true only works when state is 'absent'.")
+
     if module.params['app_json']:
         json_filename = module.params['app_json']
         app_json = ''
@@ -267,7 +277,7 @@ def main():
     if state == 'present':
         ret, changed = mam.create_if_not_exists(app_json)
     elif state == 'absent':
-        ret, changed = mam.destroy_app()
+        ret, changed = mam.destroy_app(force)
     elif state == 'updated':
         ret, changed = mam.update_app(app_json)
     elif state == 'test':
@@ -286,7 +296,8 @@ module = AnsibleModule(
         app_json=dict(required=False),
         app=dict(required=False),
         app_id=dict(required=False),
-        state=dict(required=True, choices=['present', 'absent', 'updated', 'test','get'])
+        state=dict(required=True, choices=['present', 'absent', 'updated', 'test','get']),
+        force=dict(required=False, type='bool', default=False),
     ),
 )
 

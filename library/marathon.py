@@ -32,7 +32,7 @@ options:
   force:
     required: false
     description:
-      - If true, forces the application even if the deployment is locked due to prior changes.
+      - If true, forces the application to be removed, even if it is locked due to ongoing changes.
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''

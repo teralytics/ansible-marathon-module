@@ -32,8 +32,7 @@ options:
   force:
     required: false
     description:
-      - If true, forces the application to be removed, even if it is locked due to ongoing changes.
-      - If true, forces the application to be updated, even if it is locked due to ongoing changes.
+      - If true, forces the application to be updated or removed, even if it is locked due to ongoing changes.
 
 author: "Vincenzo Pii (vincenzo.pii@teralytics.net)"
 '''

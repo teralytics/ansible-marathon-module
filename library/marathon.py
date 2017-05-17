@@ -298,7 +298,7 @@ module = AnsibleModule(
         app=dict(required=False),
         app_id=dict(required=False),
         state=dict(required=True, choices=['present', 'absent', 'updated', 'test','get']),
-        force=dict(required=False, type='bool', default=True),
+        force=dict(required=False, type='bool', default=False),
     ),
 )
 

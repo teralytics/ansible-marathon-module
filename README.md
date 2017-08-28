@@ -48,11 +48,13 @@ You will need to assign the `marathon-deploy` role to access the `marathon` modu
             container:
                 type: "DOCKER"
                 docker:
-                image: "prom/prometheus:latest"
-                network: "BRIDGE"
-                privileged: false
-                forcePullImage: true
-                portMappings: []
+                  image: "prom/prometheus:latest"
+                  network: "BRIDGE"
+                  privileged: false
+                  forcePullImage: true
+                  portMappings:
+                  - containerPort: 9090
+                    hostPort: 0
             healthChecks: []
             upgradeStrategy:
                 maximumOverCapacity: 0

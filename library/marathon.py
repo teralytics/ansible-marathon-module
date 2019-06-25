@@ -123,6 +123,13 @@ class MarathonAppManager(object):
                     del match[service_port_key]
         return
 
+    @staticmethod
+    def _to_camel_case(snake_str):
+        components = snake_str.split('_')
+        # We capitalize the first letter of each component except the first one
+        # with the 'title' method and join them together.
+        return components[0] + ''.join(x.title() for x in components[1:])
+
     def _get_app_info(self):
         try:
             app_info = self._marathon_client.get_app(self._appid)
@@ -164,6 +171,8 @@ class MarathonAppManager(object):
         MarathonAppManager._clean_json_objects_for_update(d2)
 
         for item in marathon.MarathonApp.UPDATE_OK_ATTRIBUTES:
+            # json keys coming from marathon is camelcase VS snake case from the marathon lib
+            item = MarathonAppManager._to_camel_case(item)
             if d1.get(item) and d2.get(item) and MarathonAppManager._ordered(d1[item]) != MarathonAppManager._ordered(d2[item]):
                 # Found a difference
                 return False
